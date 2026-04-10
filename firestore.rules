@@ -1,0 +1,107 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // ===============================================================
+    // Assumed Data Model
+    // ===============================================================
+    //
+    // Collection: ingredients
+    // Fields:
+    //   - name: string (1-100 chars)
+    //   - unit: string (enum: kg, g, l, ml, un, pct)
+    //   - price: number (> 0)
+    //   - quantityPerUnit: number (> 0)
+    //   - uid: string (owner)
+    //   - createdAt: number
+    //
+    // Collection: recipes
+    // Fields:
+    //   - name: string (1-100 chars)
+    //   - ingredients: list of maps {ingredientId, quantity}
+    //   - laborTime: number (>= 0)
+    //   - laborRate: number (>= 0)
+    //   - overheadPercentage: number (>= 0)
+    //   - profitPercentage: number (>= 0)
+    //   - yield: number (> 0)
+    //   - uid: string (owner)
+    //   - createdAt: number
+    //
+    // ===============================================================
+
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
+    
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+    
+    function isDocOwner() {
+      return isAuthenticated() && request.auth.uid == resource.data.uid;
+    }
+    
+    function uidUnchanged() {
+      return !('uid' in request.resource.data) || request.resource.data.uid == request.auth.uid;
+    }
+
+    function uidNotModified() {
+      return !('uid' in request.resource.data) || request.resource.data.uid == resource.data.uid;
+    }
+
+    function hasOnlyAllowedFields(fields) {
+      return request.resource.data.keys().hasOnly(fields);
+    }
+
+    // ===============================================================
+    // Domain Validators
+    // ===============================================================
+
+    function isValidIngredient(data) {
+      return data.name is string && data.name.size() >= 1 && data.name.size() <= 100 &&
+             data.unit in ['kg', 'g', 'l', 'ml', 'un', 'pct'] &&
+             data.price is number && data.price >= 0 &&
+             data.quantityPerUnit is number && data.quantityPerUnit > 0 &&
+             data.uid == request.auth.uid &&
+             data.createdAt is number;
+    }
+
+    function isValidRecipe(data) {
+      return data.name is string && data.name.size() >= 1 && data.name.size() <= 100 &&
+             data.ingredients is list &&
+             data.laborTime is number && data.laborTime >= 0 &&
+             data.laborRate is number && data.laborRate >= 0 &&
+             data.overheadPercentage is number && data.overheadPercentage >= 0 &&
+             data.profitPercentage is number && data.profitPercentage >= 0 &&
+             data.yield is number && data.yield > 0 &&
+             data.uid == request.auth.uid &&
+             data.createdAt is number;
+    }
+
+    // ===============================================================
+    // Rules
+    // ===============================================================
+
+    match /ingredients/{ingredientId} {
+      allow read: if isDocOwner();
+      allow create: if isAuthenticated() && isValidIngredient(request.resource.data) && hasOnlyAllowedFields(['name', 'unit', 'price', 'quantityPerUnit', 'uid', 'createdAt']);
+      allow update: if isDocOwner() && isValidIngredient(request.resource.data) && uidNotModified() && hasOnlyAllowedFields(['name', 'unit', 'price', 'quantityPerUnit', 'uid', 'createdAt']);
+      allow delete: if isDocOwner();
+    }
+
+    match /recipes/{recipeId} {
+      allow read: if isDocOwner();
+      allow create: if isAuthenticated() && isValidRecipe(request.resource.data) && hasOnlyAllowedFields(['name', 'ingredients', 'laborTime', 'laborRate', 'overheadPercentage', 'profitPercentage', 'yield', 'uid', 'createdAt']);
+      allow update: if isDocOwner() && isValidRecipe(request.resource.data) && uidNotModified() && hasOnlyAllowedFields(['name', 'ingredients', 'laborTime', 'laborRate', 'overheadPercentage', 'profitPercentage', 'yield', 'uid', 'createdAt']);
+      allow delete: if isDocOwner();
+    }
+    
+    match /{path=**} {
+      allow read, write: if false;
+    }
+  }
+}

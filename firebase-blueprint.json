@@ -1,0 +1,54 @@
+{
+  "entities": {
+    "Ingredient": {
+      "title": "Ingredient",
+      "description": "A raw material used in recipes",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string", "description": "Name of the ingredient" },
+        "unit": { "type": "string", "enum": ["kg", "g", "l", "ml", "un", "pct"], "description": "Measurement unit" },
+        "price": { "type": "number", "description": "Purchase price" },
+        "quantityPerUnit": { "type": "number", "description": "Quantity in the purchase unit" },
+        "uid": { "type": "string", "description": "Owner user ID" },
+        "createdAt": { "type": "number", "description": "Timestamp" }
+      },
+      "required": ["name", "unit", "price", "quantityPerUnit", "uid", "createdAt"]
+    },
+    "Recipe": {
+      "title": "Recipe",
+      "description": "A confectionery recipe with ingredients and pricing info",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string", "description": "Name of the recipe" },
+        "ingredients": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "ingredientId": { "type": "string" },
+              "quantity": { "type": "number" }
+            }
+          }
+        },
+        "laborTime": { "type": "number", "description": "Time in minutes" },
+        "laborRate": { "type": "number", "description": "Hourly rate" },
+        "overheadPercentage": { "type": "number" },
+        "profitPercentage": { "type": "number" },
+        "yield": { "type": "number" },
+        "uid": { "type": "string" },
+        "createdAt": { "type": "number" }
+      },
+      "required": ["name", "ingredients", "laborTime", "laborRate", "uid", "createdAt"]
+    }
+  },
+  "firestore": {
+    "/ingredients/{ingredientId}": {
+      "schema": "Ingredient",
+      "description": "Collection of ingredients"
+    },
+    "/recipes/{recipeId}": {
+      "schema": "Recipe",
+      "description": "Collection of recipes"
+    }
+  }
+}
