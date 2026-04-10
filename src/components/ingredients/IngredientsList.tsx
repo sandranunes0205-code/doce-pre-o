@@ -73,12 +73,14 @@ export function IngredientsList({ ingredients, onAdd, onDelete }: IngredientsLis
         </div>
         
         <Dialog open={isAddOpen} onOpenChange={setIsAddOpen}>
-          <DialogTrigger asChild>
-            <Button className="rounded-xl gap-2 w-full md:w-auto">
-              <Plus className="w-4 h-4" />
-              Novo Ingrediente
-            </Button>
-          </DialogTrigger>
+          <DialogTrigger
+            render={
+              <Button className="rounded-xl gap-2 w-full md:w-auto">
+                <Plus className="w-4 h-4" />
+                Novo Ingrediente
+              </Button>
+            }
+          />
           <DialogContent className="rounded-3xl sm:max-w-[425px]">
             <DialogHeader>
               <DialogTitle className="text-2xl font-heading">Adicionar Ingrediente</DialogTitle>

@@ -10,35 +10,23 @@ import {
   deleteDoc,
   doc
 } from 'firebase/firestore';
-import { db, auth } from '@/lib/firebase';
+import { db } from '@/lib/firebase';
 import { Ingredient, Recipe } from '@/types';
 import { handleFirestoreError, OperationType } from '@/lib/error-handler';
+
+const PUBLIC_USER_ID = 'default-user';
 
 export function useData() {
   const [ingredients, setIngredients] = useState<Ingredient[]>([]);
   const [recipes, setRecipes] = useState<Recipe[]>([]);
   const [loading, setLoading] = useState(true);
-  const [user, setUser] = useState(auth.currentUser);
 
   useEffect(() => {
-    return auth.onAuthStateChanged((user) => {
-      setUser(user);
-      if (!user) {
-        setIngredients([]);
-        setRecipes([]);
-        setLoading(false);
-      }
-    });
-  }, []);
-
-  useEffect(() => {
-    if (!user) return;
-
     setLoading(true);
 
     const qIngredients = query(
       collection(db, 'ingredients'),
-      where('uid', '==', user.uid),
+      where('uid', '==', PUBLIC_USER_ID),
       orderBy('createdAt', 'desc')
     );
 
@@ -47,12 +35,15 @@ export function useData() {
       setIngredients(data);
       setLoading(false);
     }, (error) => {
-      handleFirestoreError(error, OperationType.LIST, 'ingredients');
+      console.error('Ingredients onSnapshot error:', error);
+      setLoading(false);
+      // We don't throw here to avoid hanging the app in a loading state
+      // but we log it so it can be diagnosed
     });
 
     const qRecipes = query(
       collection(db, 'recipes'),
-      where('uid', '==', user.uid),
+      where('uid', '==', PUBLIC_USER_ID),
       orderBy('createdAt', 'desc')
     );
 
@@ -60,21 +51,20 @@ export function useData() {
       const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Recipe));
       setRecipes(data);
     }, (error) => {
-      handleFirestoreError(error, OperationType.LIST, 'recipes');
+      console.error('Recipes onSnapshot error:', error);
     });
 
     return () => {
       unsubIngredients();
       unsubRecipes();
     };
-  }, [user]);
+  }, []);
 
   const addIngredient = async (ingredient: Omit<Ingredient, 'id' | 'uid' | 'createdAt'>) => {
-    if (!user) return;
     try {
       await addDoc(collection(db, 'ingredients'), {
         ...ingredient,
-        uid: user.uid,
+        uid: PUBLIC_USER_ID,
         createdAt: Date.now()
       });
     } catch (error) {
@@ -100,11 +90,10 @@ export function useData() {
   };
 
   const addRecipe = async (recipe: Omit<Recipe, 'id' | 'uid' | 'createdAt'>) => {
-    if (!user) return;
     try {
       await addDoc(collection(db, 'recipes'), {
         ...recipe,
-        uid: user.uid,
+        uid: PUBLIC_USER_ID,
         createdAt: Date.now()
       });
     } catch (error) {
@@ -112,14 +101,22 @@ export function useData() {
     }
   };
 
+  const deleteRecipe = async (id: string) => {
+    try {
+      await deleteDoc(doc(db, 'recipes', id));
+    } catch (error) {
+      handleFirestoreError(error, OperationType.DELETE, `recipes/${id}`);
+    }
+  };
+
   return {
-    user,
     ingredients,
     recipes,
     loading,
     addIngredient,
     updateIngredient,
     deleteIngredient,
-    addRecipe
+    addRecipe,
+    deleteRecipe
   };
 }

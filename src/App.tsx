@@ -3,55 +3,20 @@ import { Navbar } from '@/components/layout/Navbar';
 import { Toaster } from '@/components/ui/sonner';
 import { useData } from '@/hooks/useData';
 import { IngredientsList } from '@/components/ingredients/IngredientsList';
+import { RecipesList } from '@/components/recipes/RecipesList';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { auth } from '@/lib/firebase';
-import { GoogleAuthProvider, signInWithPopup, signOut } from 'firebase/auth';
 import { Button } from '@/components/ui/button';
-import { Cake, LogIn, LogOut, Loader2 } from 'lucide-react';
+import { Cake, Loader2 } from 'lucide-react';
 
 function AppContent() {
   const [activeTab, setActiveTab] = useState('dashboard');
-  const { user, ingredients, recipes, loading, addIngredient, deleteIngredient } = useData();
-
-  const handleLogin = async () => {
-    const provider = new GoogleAuthProvider();
-    try {
-      await signInWithPopup(auth, provider);
-    } catch (error) {
-      console.error('Login error:', error);
-    }
-  };
-
-  const handleLogout = () => signOut(auth);
+  const { ingredients, recipes, loading, addIngredient, deleteIngredient, addRecipe, deleteRecipe } = useData();
 
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <Loader2 className="w-12 h-12 text-primary animate-spin" />
-      </div>
-    );
-  }
-
-  if (!user) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-background p-4">
-        <div className="max-w-md w-full text-center space-y-8 animate-in fade-in zoom-in duration-700">
-          <div className="flex justify-center">
-            <div className="w-24 h-24 bg-primary rounded-full flex items-center justify-center shadow-xl">
-              <Cake className="w-12 h-12 text-white" />
-            </div>
-          </div>
-          <div className="space-y-2">
-            <h1 className="text-4xl font-heading font-bold text-secondary">DocePreço</h1>
-            <p className="text-muted-foreground text-lg">
-              A ferramenta definitiva para precificar suas criações na confeitaria.
-            </p>
-          </div>
-          <Button onClick={handleLogin} size="lg" className="w-full gap-3 rounded-2xl py-6 text-lg shadow-lg">
-            <LogIn className="w-6 h-6" />
-            Entrar com Google
-          </Button>
-        </div>
       </div>
     );
   }
@@ -70,11 +35,8 @@ function AppContent() {
                 {activeTab === 'recipes' && 'Minhas Receitas'}
                 {activeTab === 'calculator' && 'Calculadora'}
               </h1>
-              <p className="text-muted-foreground mt-1">Olá, {user.displayName}!</p>
+              <p className="text-muted-foreground mt-1">Bem-vindo ao DocePreço!</p>
             </div>
-            <Button variant="ghost" size="icon" onClick={handleLogout} className="rounded-full">
-              <LogOut className="w-5 h-5 text-muted-foreground" />
-            </Button>
           </header>
 
           {activeTab === 'dashboard' && (
@@ -90,14 +52,22 @@ function AppContent() {
                 </div>
                 <div className="bg-white p-6 rounded-3xl shadow-sm border border-border">
                   <p className="text-sm text-muted-foreground uppercase tracking-wider font-medium">Margem Média</p>
-                  <p className="text-4xl font-bold mt-2 text-secondary">0%</p>
+                  <p className="text-4xl font-bold mt-2 text-secondary">
+                    {recipes.length > 0 
+                      ? `${Math.round(recipes.reduce((acc, r) => acc + r.profitPercentage, 0) / recipes.length)}%`
+                      : '0%'}
+                  </p>
                 </div>
               </div>
               
               <div className="bg-accent/20 p-8 rounded-3xl border border-border/50">
                 <h3 className="text-xl mb-2">Dica do DocePreço</h3>
                 <p className="text-muted-foreground">
-                  Comece cadastrando seus ingredientes básicos para poder montar suas receitas e calcular o lucro real de cada doce.
+                  {ingredients.length === 0 
+                    ? "Comece cadastrando seus ingredientes básicos para poder montar suas receitas."
+                    : recipes.length === 0
+                    ? "Agora que você tem ingredientes, crie sua primeira receita para ver o lucro real!"
+                    : "Mantenha seus preços de ingredientes atualizados para garantir que sua margem de lucro seja real."}
                 </p>
               </div>
             </section>
@@ -112,17 +82,18 @@ function AppContent() {
           )}
 
           {activeTab === 'recipes' && (
-            <section className="animate-in fade-in slide-in-from-bottom-4 duration-500">
-              <p className="text-muted-foreground py-12 text-center bg-white rounded-3xl border border-border">
-                Em breve: Montagem de fichas técnicas e precificação detalhada.
-              </p>
-            </section>
+            <RecipesList 
+              recipes={recipes}
+              ingredients={ingredients}
+              onAdd={addRecipe}
+              onDelete={deleteRecipe}
+            />
           )}
 
           {activeTab === 'calculator' && (
             <section className="animate-in fade-in slide-in-from-bottom-4 duration-500">
               <p className="text-muted-foreground py-12 text-center bg-white rounded-3xl border border-border">
-                Em breve: Simulação instantânea de preços.
+                Em breve: Simulação instantânea de preços e conversão de medidas.
               </p>
             </section>
           )}
